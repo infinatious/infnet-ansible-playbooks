@@ -1,0 +1,50 @@
+---
+- name: Uninstall Elastic Agent and clean up
+  hosts: all
+  become: yes
+  vars:
+    elastic_agent_service_name: elastic-agent
+    elastic_agent_paths:
+      - /etc/elastic-agent
+      - /opt/Elastic/Agent
+      - /usr/share/elastic-agent
+      - /var/lib/elastic-agent
+      - /var/log/elastic-agent
+  tasks:
+    - name: Stop Elastic Agent service
+      ansible.builtin.service:
+        name: "{{ elastic_agent_service_name }}"
+        state: stopped
+      ignore_errors: yes
+
+    - name: Disable Elastic Agent service
+      ansible.builtin.service:
+        name: "{{ elastic_agent_service_name }}"
+        enabled: no
+      ignore_errors: yes
+
+    - name: Remove Elastic Agent package (RHEL-based)
+      ansible.builtin.yum:
+        name: elastic-agent
+        state: absent
+      when: ansible_facts['os_family'] == "RedHat"
+      ignore_errors: yes
+
+    - name: Remove Elastic Agent package (Debian-based)
+      ansible.builtin.apt:
+        name: elastic-agent
+        state: absent
+        purge: yes
+      when: ansible_facts['os_family'] == "Debian"
+      ignore_errors: yes
+
+    - name: Remove Elastic Agent residual files
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: absent
+      loop: "{{ elastic_agent_paths }}"
+      ignore_errors: yes
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: yes

@@ -1,0 +1,40 @@
+---
+- name: Install Beszel agent
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Remove Netdata if installed
+      ansible.builtin.dnf:
+        name: netdata
+        state: absent
+
+    - name: Set SELinux to permissive (runtime)
+      ansible.builtin.command: setenforce 0
+      when: ansible_selinux.status == "enabled"
+      ignore_errors: true
+
+    - name: Disable SELinux permanently
+      ansible.builtin.replace:
+        path: /etc/selinux/config
+        regexp: '^SELINUX=.*'
+        replace: 'SELINUX=disabled'
+
+    - name: Open TCP port 45876 in firewalld
+      ansible.posix.firewalld:
+        port: 45876/tcp
+        permanent: true
+        state: enabled
+        immediate: yes
+
+    - name: Download Beszel install script
+      ansible.builtin.get_url:
+        url: https://raw.githubusercontent.com/henrygd/beszel/main/supplemental/scripts/install-agent.sh
+        dest: /tmp/install-agent.sh
+        mode: '0755'
+
+    - name: Run Beszel install script
+      ansible.builtin.command: >
+        /tmp/install-agent.sh -p 45876 -k "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAII8+BniavAuiZudHr04VpEV6kQLNYNJWA6YPLWGDhHg2"
+      args:
+        chdir: /tmp

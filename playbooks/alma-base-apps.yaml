@@ -1,0 +1,67 @@
+---
+- name: Minimal Linux base setup (no collections)
+  hosts: all
+  become: true
+  vars:
+    timezone: "America/Phoenix"
+
+  tasks:
+
+    - name: Set DNF optimizations
+      ansible.builtin.lineinfile:
+        path: /etc/dnf/dnf.conf
+        line: "{{ item }}"
+        insertafter: EOF
+      loop:
+        - "fastestmirror=true"
+        - "max_parallel_downloads=10"
+        - "defaultyes=True"
+
+    - name: Update all system packages
+      ansible.builtin.dnf:
+        name: '*'
+        state: latest
+        update_cache: true
+
+    - name: Install base utility packages
+      ansible.builtin.dnf:
+        name:
+          - epel-release
+          - open-vm-tools
+          - nfs-utils
+          - htop
+          - vim-enhanced
+          - git
+          - wget
+          - make
+          - gcc
+          - links
+          - mlocate
+          - cockpit
+          - cockpit-storaged
+          - cockpit-navigator
+          - xe-guest-utilities-latest
+          - bash-completion
+          - ncdu
+          - curl
+          - nano
+          - net-tools
+          - unzip
+        state: present
+
+    - name: Enable and start Cockpit
+      ansible.builtin.systemd:
+        name: cockpit.socket
+        enabled: true
+        state: started
+
+    - name: Enable and start xe-linux-distribution service
+      ansible.builtin.systemd:
+        name: xe-linux-distribution
+        enabled: true
+        state: started
+
+    - name: Set system timezone (no collections)
+      ansible.builtin.command: timedatectl set-timezone "{{ timezone }}"
+      args:
+        warn: false

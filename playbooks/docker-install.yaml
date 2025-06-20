@@ -1,0 +1,70 @@
+---
+- name: Install Docker, Docker Compose, and Portainer Agent (no plugins)
+  hosts: all
+  become: true
+  vars:
+    docker_compose_version: "1.29.2"
+    portainer_agent_version: "2.17.0"
+
+  tasks:
+    - name: Install dnf plugins
+      ansible.builtin.dnf:
+        name: dnf-plugins-core
+        state: present
+
+    - name: Add Docker repo
+      ansible.builtin.command: >
+        dnf config-manager --add-repo=https://download.docker.com/linux/centos/docker-ce.repo
+      args:
+        creates: /etc/yum.repos.d/docker-ce.repo
+
+    - name: Update packages
+      ansible.builtin.dnf:
+        name: '*'
+        state: latest
+        update_cache: yes
+
+    - name: Install Docker packages
+      ansible.builtin.dnf:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+        state: present
+
+    - name: Enable and start Docker
+      ansible.builtin.systemd:
+        name: docker
+        enabled: true
+        state: started
+
+    - name: Download Docker Compose binary
+      ansible.builtin.get_url:
+        url: "https://github.com/docker/compose/releases/download/{{ docker_compose_version }}/docker-compose-{{ ansible_system }}-{{ ansible_architecture }}"
+        dest: /usr/local/bin/docker-compose
+        mode: '0755'
+
+    - name: Create symlink for docker-compose
+      ansible.builtin.file:
+        src: /usr/local/bin/docker-compose
+        dest: /usr/bin/docker-compose
+        state: link
+        force: true
+
+    - name: Add user to docker group
+      ansible.builtin.user:
+        name: "{{ ansible_user_id }}"
+        groups: docker
+        append: yes
+
+    - name: Run Portainer Agent container
+      ansible.builtin.shell: |
+        docker run -d \
+          -p 9001:9001 \
+          --name portainer_agent \
+          --restart=always \
+          -v /var/run/docker.sock:/var/run/docker.sock \
+          -v /var/lib/docker/volumes:/var/lib/docker/volumes \
+          portainer/agent:{{ portainer_agent_version }}
+      args:
+        creates: /var/lib/docker/volumes/portainer_agent

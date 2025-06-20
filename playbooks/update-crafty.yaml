@@ -1,0 +1,10 @@
+---
+- name: Update Crafty Controller
+  hosts: all
+  become: true
+  tasks:
+
+    - name: Run Crafty update script
+      ansible.builtin.command: /var/opt/minecraft/crafty/update_crafty.sh
+      args:
+        chdir: /var/opt/minecraft/crafty

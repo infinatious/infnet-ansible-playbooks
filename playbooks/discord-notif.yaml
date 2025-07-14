@@ -49,7 +49,7 @@
         dest: /etc/systemd/system/dnf-automatic-install.service.d/override.conf
         content: |
           [Service]
-          ExecStartPost=/opt/discord/discord.sh --webhook-url "{{ discord_webhook_url }}" --text "✅ dnf-automatic completed successfully on {{ inventory_hostname }}."
+          ExecStartPost=/opt/discord/discord.sh --webhook-url "{{ discord_webhook_url }}" --hostname "$(hostname)" --text "✅ dnf-automatic completed successfully on {{ inventory_hostname }}."
       notify: Reload systemd
 
   handlers:

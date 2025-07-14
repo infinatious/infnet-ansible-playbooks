@@ -44,5 +44,5 @@
     - name: Send test message to Discord using discord.sh
       command: >
         /opt/discord/discord.sh
-        --webhook-url "{{ discord_webhook_url }}" --username "$(hostname)"
+        --webhook-url "{{ discord_webhook_url }}" --username "{{ inventory_hostname }}"
         --text "✅ Discord webhook test from Ansible on {{ inventory_hostname }}"

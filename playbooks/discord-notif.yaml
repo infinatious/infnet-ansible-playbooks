@@ -1,0 +1,57 @@
+---
+- name: Setup discord.sh for dnf-automatic notifications
+  hosts: all
+  become: true
+
+  tasks:
+
+    - name: Ensure git is installed
+      package:
+        name: git
+        state: present
+
+    - name: Clone fieu/discord.sh repo into /opt/discord
+      git:
+        repo: https://github.com/fieu/discord.sh.git
+        dest: /opt/discord
+        version: master
+        force: yes
+
+    - name: Ensure discord.sh is executable
+      file:
+        path: /opt/discord/discord.sh
+        mode: '0755'
+
+    - name: Ensure dnf-automatic is installed
+      package:
+        name: dnf-automatic
+        state: present
+
+    - name: Enable and start dnf-automatic.timer
+      systemd:
+        name: dnf-automatic.timer
+        enabled: true
+        state: started
+
+    - name: Fail if discord_webhook_url is not provided
+      fail:
+        msg: "❌ You must provide 'discord_webhook_url' via -e at runtime."
+      when: discord_webhook_url is not defined
+
+    - name: Create override directory for dnf-automatic-install
+      file:
+        path: /etc/systemd/system/dnf-automatic-install.service.d
+        state: directory
+        mode: '0755'
+
+    - name: Add ExecStartPost to notify Discord on successful update
+      copy:
+        dest: /etc/systemd/system/dnf-automatic-install.service.d/override.conf
+        content: |
+          [Service]
+          ExecStartPost=/opt/discord/discord.sh --webhook-url "{{ discord_webhook_url }}" --text "✅ dnf-automatic completed successfully on {{ inventory_hostname }}."
+      notify: Reload systemd
+
+  handlers:
+    - name: Reload systemd
+      command: systemctl daemon-reexec

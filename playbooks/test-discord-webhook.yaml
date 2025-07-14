@@ -1,0 +1,48 @@
+---
+- name: Test Discord Webhook with discord.sh
+  hosts: all
+  become: true
+
+  vars:
+    webhook_storage_path: /opt/discord/webhook_url.txt
+
+  tasks:
+
+    - name: Fail if discord_webhook_url is not provided
+      fail:
+        msg: "You must provide discord_webhook_url via -e"
+      when: discord_webhook_url is not defined
+
+    - name: Ensure /opt/discord exists
+      file:
+        path: /opt/discord
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Store the webhook URL in a file
+      copy:
+        dest: "{{ webhook_storage_path }}"
+        content: "{{ discord_webhook_url }}\n"
+        owner: root
+        group: root
+        mode: '0600'
+
+    - name: Clone fieu/discord.sh into /opt/discord if not already there
+      git:
+        repo: https://github.com/fieu/discord.sh.git
+        dest: /opt/discord
+        version: master
+        force: no
+
+    - name: Ensure discord.sh is executable
+      file:
+        path: /opt/discord/discord.sh
+        mode: '0755'
+
+    - name: Send test message to Discord using discord.sh
+      command: >
+        /opt/discord/discord.sh
+        --webhook-url "{{ discord_webhook_url }}"
+        --text "✅ Discord webhook test from Ansible on {{ inventory_hostname }}"
